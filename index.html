@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>RECOMEÇO: Ciclo Perdido</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<style>
+body{
+    margin:0;
+    background:#f5f5f5;
+    color:#222;
+    font-family:Arial;
+    text-align:center;
+}
+h2{margin:8px 0 4px;}
+#msg{font-size:14px; min-height:40px;}
+canvas{
+    display:block;
+    margin:0 auto;
+    border:2px solid #ccc;
+    background:#fff;
+}
+</style>
+</head>
+<body>
+
+<h2>RECOMEÇO</h2>
+<p id="msg">O mundo acabou. Você acorda sem memórias.</p>
+
+<canvas id="game" width="320" height="420"></canvas>
+
+<audio id="music" loop>
+  <source src="music.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const music = document.getElementById("music");
+
+let player, obstacles, score, speed;
+let rebirths = 0;
+let worldColor = 240;
+let loopId = null;
+let running = false;
+
+const messages = [
+  "Você acorda em um corpo diferente.",
+  "Suas memórias se desfazem.",
+  "O ciclo se reinicia.",
+  "Você aprende com a falha.",
+  "O mundo começa a se curar."
+];
+
+function startGame(){
+    cancelAnimationFrame(loopId);
+    running = true;
+
+    player = { x:144, y:360, w:32, h:32 };
+    obstacles = [];
+    score = 0;
+    speed = 2 + rebirths * 0.4;
+
+    // mundo começa claro e ganha cor
+    worldColor = Math.max(180, 240 - rebirths * 20);
+
+    document.getElementById("msg").innerText =
+        messages[rebirths % messages.length];
+
+    music.play();
+    loop();
+}
+
+function dieAndRebirth(){
+    running = false;
+    cancelAnimationFrame(loopId);
+    rebirths++;
+    setTimeout(startGame, 500);
+}
+
+function spawnObstacle(){
+    obstacles.push({
+        x: Math.random()*(canvas.width-28),
+        y: -30,
+        w: 28,
+        h: 28
+    });
+}
+
+function drawWorld(){
+    ctx.fillStyle = `rgb(${worldColor},${worldColor},${worldColor})`;
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+}
+
+function drawPlayer(){
+    const glow = ctx.createRadialGradient(
+        player.x+16, player.y+16, 4,
+        player.x+16, player.y+16, 26
+    );
+    glow.addColorStop(0, `hsl(${rebirths*40},80%,55%)`);
+    glow.addColorStop(1, "#ffffff");
+
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.roundRect(player.x,player.y,player.w,player.h,10);
+    ctx.fill();
+}
+
+function loop(){
+    if(!running) return;
+
+    drawWorld();
+    drawPlayer();
+
+    ctx.fillStyle="#cc4444";
+    for(let o of obstacles){
+        o.y += speed;
+        ctx.fillRect(o.x,o.y,o.w,o.h);
+
+        if(
+            o.x < player.x + player.w &&
+            o.x + o.w > player.x &&
+            o.y < player.y + player.h &&
+            o.y + o.h > player.y
+        ){
+            dieAndRebirth();
+            return;
+        }
+    }
+
+    obstacles = obstacles.filter(o => o.y < canvas.height);
+
+    score++;
+    ctx.fillStyle="#333";
+    ctx.fillText("Ciclos: " + rebirths, 10, 20);
+
+    if(Math.random() < 0.035) spawnObstacle();
+
+    loopId = requestAnimationFrame(loop);
+}
+
+/* Controle por toque */
+canvas.addEventListener("touchmove", e => {
+    e.preventDefault();
+    const r = canvas.getBoundingClientRect();
+    player.x = e.touches[0].clientX - r.left - player.w / 2;
+    if(player.x < 0) player.x = 0;
+    if(player.x + player.w > canvas.width)
+        player.x = canvas.width - player.w;
+},{passive:false});
+
+startGame();
+</script>
+
+</body>
+</html>
